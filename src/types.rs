@@ -31,21 +31,28 @@ pub struct VestingTerms {
     pub amount: u64,
 }
 
+/// A Vesting struct that can be used to compute releasable amount
 #[derive(Debug, Clone)]
 pub struct Vesting {
     pub terms: VestingTerms,
     pub state: VestingState,
 }
+/// External parameters that are used to compute the releasable amount
 pub struct GetReleasableAmountParams {
-    pub current_time: u64,
+    /// Current UNIX epoch
+    pub current_time_unix: u64,
 }
 
 impl Vesting {
+    /// Returns the amount releasable by the owner of the grant (vested amount - already released)
+    /// # Arguments
+    ///
+    /// * `params` - A parameters struct needed to
     pub fn get_releasable_amount(
         &self,
         params: &GetReleasableAmountParams,
     ) -> Result<u64, VestingError> {
-        let GetReleasableAmountParams { current_time } = *params;
+        let GetReleasableAmountParams { current_time_unix } = *params;
         let UnixVestingTimeline {
             start_unix,
             cliff_unix,
@@ -59,20 +66,20 @@ impl Vesting {
         }
 
         // Too early, cliff not reached yet
-        if current_time < cliff_unix {
+        if current_time_unix < cliff_unix {
             println!("Early exit: Not reached cliff");
             return Ok(0);
         }
 
         // Reached to the end of the grant
-        if current_time >= end_unix {
+        if current_time_unix >= end_unix {
             println!("Early exit: ended");
             let remaining_amount = self.terms.amount - self.state.amount_already_issued;
             return Ok(remaining_amount);
         }
 
         // Cliff was reached and grant end date is not reached yet.
-        let elapsed_seconds = current_time - start_unix;
+        let elapsed_seconds = current_time_unix - start_unix;
         let vested_seconds =
             elapsed_seconds - (elapsed_seconds % self.terms.timeline.seconds_per_slice);
         let vested_amount = {

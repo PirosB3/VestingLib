@@ -2,7 +2,8 @@ mod errors;
 mod traits;
 mod types;
 pub use errors::VestingError;
-pub use types::{UnixVestingTimeline, Vesting, VestingTimeline};
+pub use traits::{CanInitialize, VestingInitParams};
+pub use types::{Vesting, VestingTimeline};
 
 #[cfg(test)]
 mod tests {
@@ -88,7 +89,7 @@ mod tests {
         };
         let vesting = Vesting::from_init_params(&params).unwrap();
         let result = vesting.get_releasable_amount(&GetReleasableAmountParams {
-            current_time: start_unix + (2 * cliff_seconds),
+            current_time_unix: start_unix + (2 * cliff_seconds),
         });
         assert_eq!(result.err().unwrap(), VestingError::Revoked);
     }
@@ -107,20 +108,21 @@ mod tests {
         };
         let vesting = Vesting::from_init_params(&params).unwrap();
 
-        let mut current_time = start_unix - 100;
+        let mut current_time_unix = start_unix - 100;
         loop {
-            let result = vesting.get_releasable_amount(&GetReleasableAmountParams { current_time });
+            let result =
+                vesting.get_releasable_amount(&GetReleasableAmountParams { current_time_unix });
             assert!(result.is_ok());
             if let Ok(vested_amount) = result {
                 if vested_amount > 0 {
-                    assert!(current_time >= params.start_unix + params.cliff_seconds);
+                    assert!(current_time_unix >= params.start_unix + params.cliff_seconds);
                     assert_eq!(
                         vested_amount,
                         (params.grant_token_amount / 4) - params.already_issued_token_amount
                     );
                     break;
                 } else {
-                    current_time += 100;
+                    current_time_unix += 100;
                 }
             }
         }
@@ -137,7 +139,10 @@ mod tests {
             already_issued_token_amount: 500_000,
             revoked: false,
         });
-        assert_eq!(vesting.err().unwrap(), VestingError::ConfigurationError("Tokens issued are greater than the total grant"));
+        assert_eq!(
+            vesting.err().unwrap(),
+            VestingError::ConfigurationError("Tokens issued are greater than the total grant")
+        );
     }
 
     #[test]
@@ -158,7 +163,7 @@ mod tests {
         .unwrap();
         let result = vesting
             .get_releasable_amount(&GetReleasableAmountParams {
-                current_time: start_unix + duration_seconds,
+                current_time_unix: start_unix + duration_seconds,
             })
             .unwrap();
         assert_eq!(result, amount);
@@ -182,9 +187,10 @@ mod tests {
         })
         .unwrap();
         let mut last_price = 0;
-        let mut current_time = start_unix + cliff_seconds;
+        let mut current_time_unix = start_unix + cliff_seconds;
         loop {
-            let result = vesting.get_releasable_amount(&GetReleasableAmountParams { current_time });
+            let result =
+                vesting.get_releasable_amount(&GetReleasableAmountParams { current_time_unix });
             assert!(result.is_ok());
             if let Ok(vested_amount) = result {
                 println!("{}", vested_amount);
@@ -192,7 +198,7 @@ mod tests {
                 if vested_amount == amount {
                     break;
                 }
-                current_time += 300;
+                current_time_unix += 300;
                 last_price = vested_amount;
             }
         }

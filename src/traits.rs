@@ -90,7 +90,9 @@ impl CanInitialize for VestingState {
             ..
         } = *params;
         if already_issued_token_amount > grant_token_amount {
-            return Err(VestingError::ConfigurationError("Tokens issued are greater than the total grant"))
+            return Err(VestingError::ConfigurationError(
+                "Tokens issued are greater than the total grant",
+            ));
         }
         Ok(VestingState {
             revoked,
