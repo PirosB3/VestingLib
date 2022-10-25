@@ -24,6 +24,7 @@ pub struct VestingInitParams {
 const THIRTY_DAYS: u64 = 2592000;
 
 pub trait CanInitialize {
+    /// Initializes a new instance from a configuration object
     fn from_init_params(params: &VestingInitParams) -> Result<Self, VestingError>
     where
         Self: Sized;
