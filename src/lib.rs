@@ -127,6 +127,20 @@ mod tests {
     }
 
     #[test]
+    fn it_fails_if_number_of_issued_tokens_bigger_than_grant() {
+        let vesting = Vesting::from_init_params(&VestingInitParams {
+            start_unix: 100,
+            cliff_seconds: 10,
+            duration_seconds: 2000,
+            seconds_per_slice: 300,
+            grant_token_amount: 100_000,
+            already_issued_token_amount: 500_000,
+            revoked: false,
+        });
+        assert_eq!(vesting.err().unwrap(), VestingError::ConfigurationError("Tokens issued are greater than the total grant"));
+    }
+
+    #[test]
     fn it_returns_total_amount() {
         let start_unix = 1666716060;
         let cliff_seconds = 2592000;

@@ -1,14 +1,23 @@
 use crate::types::{VestingState, VestingTerms};
 use crate::VestingError;
-use crate::{UnixVestingTimeline, Vesting, VestingTimeline};
+use crate::{Vesting, VestingTimeline};
 
+/// The parameters needed to initialize the vesting
+/// Library is inspired by https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/contracts/TokenVesting.sol
 pub struct VestingInitParams {
+    /// The vesting UNIX start time in seconds
     pub start_unix: u64,
+    /// The duration of the cliff in seconds
     pub cliff_seconds: u64,
+    /// The duration of overall grant (must be >= cliff)
     pub duration_seconds: u64,
+    /// The duration of a slice period for the vesting in seconds
     pub seconds_per_slice: u64,
+    /// The total number of tokens issued for the duration of the grant
     pub grant_token_amount: u64,
+    /// The number of tokens already issued to the user (<= grant_token_amount)
     pub already_issued_token_amount: u64,
+    /// Marks if the grant was revoked by an admin
     pub revoked: bool,
 }
 
@@ -77,8 +86,12 @@ impl CanInitialize for VestingState {
         let VestingInitParams {
             revoked,
             already_issued_token_amount,
+            grant_token_amount,
             ..
         } = *params;
+        if already_issued_token_amount > grant_token_amount {
+            return Err(VestingError::ConfigurationError("Tokens issued are greater than the total grant"))
+        }
         Ok(VestingState {
             revoked,
             amount_already_issued: already_issued_token_amount,
