@@ -1,51 +1,58 @@
-use crate::{Vesting, UnixVestingTimeline};
+use crate::types::{VestingTerms, VestingState};
+use crate::{Vesting, UnixVestingTimeline, VestingTimeline};
 use crate::VestingError;
 
 
-pub trait IsVestingSchedule<P> {
-    type Error;
-    fn get_releasable_amount(&self, params: &P) -> Result<u64, Self::Error>;
+pub struct VestingInitParams {
+    pub start_unix: u64,
+    pub cliff_seconds: u64,
+    pub duration_seconds: u64,
+    pub seconds_per_slice: u64,
+    pub grant_token_amount: u64,
+    pub already_issued_token_amount: u64,
+    pub revoked: bool,
 }
 
-pub struct GetReleasableAmountParams {
-    pub current_time: u64,
+const THIRTY_DAYS: u64 = 2592000;
+
+pub trait CanInitialize {
+    fn from_init_params(params: &VestingInitParams) -> Result<Self, VestingError> where Self: Sized;
 }
 
-impl IsVestingSchedule<GetReleasableAmountParams> for Vesting {
-    type Error = VestingError;
-
-    fn get_releasable_amount(&self, params: &GetReleasableAmountParams) -> Result<u64, Self::Error> {
-        let GetReleasableAmountParams{current_time} = *params;
-        let UnixVestingTimeline{start_unix, cliff_unix, end_unix} = self.terms.timeline.get_unix_timeline();
-
-        // Grant was revoked. When grant is revoked, it is also fully paid out if there was
-        // any vesting
-        if self.state.revoked {
-            return Err(Self::Error::Revoked);
+impl CanInitialize for VestingTimeline {
+    fn from_init_params(params: &VestingInitParams) -> Result<Self, VestingError> where Self: Sized {
+        let VestingInitParams{cliff_seconds, duration_seconds, seconds_per_slice, start_unix, ..} = *params;
+        if duration_seconds < cliff_seconds {
+            return Err(VestingError::ConfigurationError("Grant duration is less than the cliff"));
         }
-
-        // Too early, cliff not reached yet
-        if current_time < cliff_unix {
-            println!("Early exit: Not reached cliff");
-            return Ok(0);
+        if seconds_per_slice <= 0 || seconds_per_slice > THIRTY_DAYS {
+            return Err(VestingError::ConfigurationError("Slice must be > 0 and <= 30 days"));
         }
-
-        // Reached to the end of the grant
-        if current_time >= end_unix {
-            println!("Early exit: ended");
-            let remaining_amount = self.terms.amount - self.state.amount_already_issued;
-            return Ok(remaining_amount);
+        if seconds_per_slice > duration_seconds {
+            return Err(VestingError::ConfigurationError("Slice must < than grant length"));
         }
+        Ok(Self { cliff_seconds, start_unix, duration_seconds, seconds_per_slice })
+    }
+}
 
-        // Cliff was reached and grant end date is not reached yet.
-        let elapsed_seconds = current_time - start_unix;
-        let vested_seconds = elapsed_seconds - (elapsed_seconds % self.terms.timeline.seconds_per_slice);
-        let vested_amount = {
-            // NOTE: There is of course some precision loss here
-            let percentage_vested = vested_seconds as f64 / self.terms.timeline.duration_seconds as f64;
-            (percentage_vested * self.terms.amount as f64) as u64
-        };
-        let remaining_amount = vested_amount - self.state.amount_already_issued;
-        Ok(remaining_amount)
+impl CanInitialize for VestingTerms {
+    fn from_init_params(params: &VestingInitParams) -> Result<Self, VestingError> where Self: Sized {
+        let timeline = VestingTimeline::from_init_params(params)?;
+        Ok(Self{timeline, amount: params.grant_token_amount})
+    }
+}
+
+impl CanInitialize for VestingState {
+    fn from_init_params(params: &VestingInitParams) -> Result<Self, VestingError> where Self: Sized {
+        let VestingInitParams{revoked, already_issued_token_amount, ..} = *params;
+        Ok(VestingState { revoked, amount_already_issued: already_issued_token_amount })
+    }
+}
+
+impl CanInitialize for Vesting {
+    fn from_init_params(params: &VestingInitParams) -> Result<Self, VestingError> where Self: Sized {
+        let state = VestingState::from_init_params(params)?;
+        let terms = VestingTerms::from_init_params(params)?;
+        Ok(Self{ state, terms })
     }
 }
