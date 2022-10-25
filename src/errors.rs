@@ -1,5 +1,6 @@
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum VestingError {
-    Revoked
+    Revoked,
+    ConfigurationError(&'static str)
 }
