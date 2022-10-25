@@ -1,28 +1,74 @@
-mod types;
-mod traits;
 mod errors;
-pub use types::{Vesting, VestingTimeline, UnixVestingTimeline};
-pub use errors::{VestingError};
-
+mod traits;
+mod types;
+pub use errors::VestingError;
+pub use types::{UnixVestingTimeline, Vesting, VestingTimeline};
 
 #[cfg(test)]
 mod tests {
-    use crate::{Vesting, types::{GetReleasableAmountParams}, VestingTimeline, VestingError, traits::VestingInitParams};
-    use crate::traits::{CanInitialize};
+    use crate::traits::CanInitialize;
+    use crate::{
+        traits::VestingInitParams, types::GetReleasableAmountParams, Vesting, VestingError,
+        VestingTimeline,
+    };
 
     #[test]
     fn fails_when_params_are_inalid() {
         let invalid_params: Vec<(VestingInitParams, &'static str)> = vec![
-            (VestingInitParams{cliff_seconds: 500, duration_seconds: 300, seconds_per_slice: 30, start_unix: 0, already_issued_token_amount: 0, grant_token_amount: 100, revoked: false}, "Grant duration is less than the cliff"),
-            (VestingInitParams{cliff_seconds: 500, duration_seconds: 1000, seconds_per_slice: 4320000, start_unix: 0, already_issued_token_amount: 0, grant_token_amount: 100, revoked: false}, "Slice must be > 0 and <= 30 days"),
-            (VestingInitParams{cliff_seconds: 500, duration_seconds: 1000, seconds_per_slice: 0, start_unix: 0, already_issued_token_amount: 0, grant_token_amount: 100, revoked: false}, "Slice must be > 0 and <= 30 days"),
-            (VestingInitParams{cliff_seconds: 500, duration_seconds: 1000, seconds_per_slice: 1200, start_unix: 0, already_issued_token_amount: 0, grant_token_amount: 100, revoked: false}, "Slice must < than grant length"),
+            (
+                VestingInitParams {
+                    cliff_seconds: 500,
+                    duration_seconds: 300,
+                    seconds_per_slice: 30,
+                    start_unix: 0,
+                    already_issued_token_amount: 0,
+                    grant_token_amount: 100,
+                    revoked: false,
+                },
+                "Grant duration is less than the cliff",
+            ),
+            (
+                VestingInitParams {
+                    cliff_seconds: 500,
+                    duration_seconds: 1000,
+                    seconds_per_slice: 4320000,
+                    start_unix: 0,
+                    already_issued_token_amount: 0,
+                    grant_token_amount: 100,
+                    revoked: false,
+                },
+                "Slice must be > 0 and <= 30 days",
+            ),
+            (
+                VestingInitParams {
+                    cliff_seconds: 500,
+                    duration_seconds: 1000,
+                    seconds_per_slice: 0,
+                    start_unix: 0,
+                    already_issued_token_amount: 0,
+                    grant_token_amount: 100,
+                    revoked: false,
+                },
+                "Slice must be > 0 and <= 30 days",
+            ),
+            (
+                VestingInitParams {
+                    cliff_seconds: 500,
+                    duration_seconds: 1000,
+                    seconds_per_slice: 1200,
+                    start_unix: 0,
+                    already_issued_token_amount: 0,
+                    grant_token_amount: 100,
+                    revoked: false,
+                },
+                "Slice must < than grant length",
+            ),
         ];
         for (param, error) in invalid_params {
             let result = VestingTimeline::from_init_params(&param);
             match result {
                 Err(VestingError::ConfigurationError(msg)) => assert_eq!(msg, error),
-                _ => assert_eq!(3, 2)
+                _ => assert_eq!(3, 2),
             }
         }
     }
@@ -31,7 +77,7 @@ mod tests {
     fn fails_when_grant_is_revoked() {
         let start_unix = 1666716060;
         let cliff_seconds = 2592000;
-        let params =  VestingInitParams{
+        let params = VestingInitParams {
             already_issued_token_amount: 30,
             grant_token_amount: 100_000,
             start_unix,
@@ -41,14 +87,16 @@ mod tests {
             seconds_per_slice: 300,
         };
         let vesting = Vesting::from_init_params(&params).unwrap();
-        let result = vesting.get_releasable_amount(&GetReleasableAmountParams { current_time: start_unix + (2 * cliff_seconds) });
+        let result = vesting.get_releasable_amount(&GetReleasableAmountParams {
+            current_time: start_unix + (2 * cliff_seconds),
+        });
         assert_eq!(result.err().unwrap(), VestingError::Revoked);
     }
 
     #[test]
     fn returns_zero_before_cliff() {
         let start_unix = 1666716060;
-        let params =  VestingInitParams{
+        let params = VestingInitParams {
             already_issued_token_amount: 30,
             grant_token_amount: 100_000,
             start_unix,
@@ -66,7 +114,10 @@ mod tests {
             if let Ok(vested_amount) = result {
                 if vested_amount > 0 {
                     assert!(current_time >= params.start_unix + params.cliff_seconds);
-                    assert_eq!(vested_amount, (params.grant_token_amount / 4) - params.already_issued_token_amount);
+                    assert_eq!(
+                        vested_amount,
+                        (params.grant_token_amount / 4) - params.already_issued_token_amount
+                    );
                     break;
                 } else {
                     current_time += 100;
@@ -89,8 +140,13 @@ mod tests {
             grant_token_amount: amount,
             already_issued_token_amount: 0,
             revoked: false,
-        }).unwrap();
-        let result = vesting.get_releasable_amount(&GetReleasableAmountParams { current_time: start_unix + duration_seconds }).unwrap();
+        })
+        .unwrap();
+        let result = vesting
+            .get_releasable_amount(&GetReleasableAmountParams {
+                current_time: start_unix + duration_seconds,
+            })
+            .unwrap();
         assert_eq!(result, amount);
     }
 
@@ -109,7 +165,8 @@ mod tests {
             grant_token_amount: amount,
             already_issued_token_amount: amount_already_issued,
             revoked: false,
-        }).unwrap();
+        })
+        .unwrap();
         let mut last_price = 0;
         let mut current_time = start_unix + cliff_seconds;
         loop {

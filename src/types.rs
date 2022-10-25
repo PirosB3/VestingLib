@@ -1,5 +1,4 @@
-use crate::errors::{VestingError};
-
+use crate::errors::VestingError;
 
 #[derive(Debug, Clone)]
 pub struct VestingTimeline {
@@ -18,7 +17,11 @@ impl VestingTimeline {
     pub fn get_unix_timeline(&self) -> UnixVestingTimeline {
         let cliff_unix = self.start_unix + self.cliff_seconds;
         let end_unix = self.start_unix + self.duration_seconds;
-        UnixVestingTimeline { start_unix: self.start_unix, cliff_unix, end_unix }
+        UnixVestingTimeline {
+            start_unix: self.start_unix,
+            cliff_unix,
+            end_unix,
+        }
     }
 }
 
@@ -38,9 +41,16 @@ pub struct GetReleasableAmountParams {
 }
 
 impl Vesting {
-    pub fn get_releasable_amount(&self, params: &GetReleasableAmountParams) -> Result<u64, VestingError> {
-        let GetReleasableAmountParams{current_time} = *params;
-        let UnixVestingTimeline{start_unix, cliff_unix, end_unix} = self.terms.timeline.get_unix_timeline();
+    pub fn get_releasable_amount(
+        &self,
+        params: &GetReleasableAmountParams,
+    ) -> Result<u64, VestingError> {
+        let GetReleasableAmountParams { current_time } = *params;
+        let UnixVestingTimeline {
+            start_unix,
+            cliff_unix,
+            end_unix,
+        } = self.terms.timeline.get_unix_timeline();
 
         // Grant was revoked. When grant is revoked, it is also fully paid out if there was
         // any vesting
@@ -63,10 +73,12 @@ impl Vesting {
 
         // Cliff was reached and grant end date is not reached yet.
         let elapsed_seconds = current_time - start_unix;
-        let vested_seconds = elapsed_seconds - (elapsed_seconds % self.terms.timeline.seconds_per_slice);
+        let vested_seconds =
+            elapsed_seconds - (elapsed_seconds % self.terms.timeline.seconds_per_slice);
         let vested_amount = {
             // NOTE: There is of course some precision loss here
-            let percentage_vested = vested_seconds as f64 / self.terms.timeline.duration_seconds as f64;
+            let percentage_vested =
+                vested_seconds as f64 / self.terms.timeline.duration_seconds as f64;
             (percentage_vested * self.terms.amount as f64) as u64
         };
         let remaining_amount = vested_amount - self.state.amount_already_issued;
