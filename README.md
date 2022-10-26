@@ -16,12 +16,15 @@ Students can import this library and focus more on developing the Solana program
 Below is some sample code of how the library is to be used:
 
 ```rust
+use std::time::{SystemTime, UNIX_EPOCH};
+use vestinglib::{Vesting, CanInitialize, VestingInitParams, GetReleasableAmountParams };
+
 // Initialize a vesting instance based on the vesting parameters
 let vesting_schedule = Vesting::from_init_params(&VestingInitParams {
     cliff_seconds: 31560000,         // One year in seconds
     duration_seconds: 126240000,     // Four years in seconds
-    seconds_per_slice: 2628000,      // One month in seconds,
-    start_unix: 1666743504,          // Grant start time
+    seconds_per_slice: 2592000,      // One month in seconds,
+    start_unix: 1585181904,          // Grant start time
     already_issued_token_amount: 0,  // No tokens were already issued
     grant_token_amount: 100,         // Grant is 100 tokens
     revoked: false,                  // If true, marks grant as revoked
