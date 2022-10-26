@@ -3,7 +3,7 @@ mod traits;
 mod types;
 pub use errors::VestingError;
 pub use traits::{CanInitialize, VestingInitParams};
-pub use types::{Vesting, VestingTimeline};
+pub use types::{Vesting, VestingTimeline, GetReleasableAmountParams};
 
 #[cfg(test)]
 mod tests {
