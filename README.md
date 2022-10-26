@@ -1,6 +1,6 @@
 # VestingLib
 
-![crates.io](https://img.shields.io/crates/v/vestinglib.svg)
+[![crates.io](https://img.shields.io/crates/v/vestinglib.svg)](https://crates.io/crates/vestinglib)
 
 
 ## What is this library?
