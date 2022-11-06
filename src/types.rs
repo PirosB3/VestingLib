@@ -83,10 +83,7 @@ impl Vesting {
         let vested_seconds =
             elapsed_seconds - (elapsed_seconds % self.terms.timeline.seconds_per_slice);
         let vested_amount = {
-            // NOTE: There is of course some precision loss here
-            let percentage_vested =
-                vested_seconds as f64 / self.terms.timeline.duration_seconds as f64;
-            (percentage_vested * self.terms.amount as f64) as u64
+            vested_seconds * self.terms.amount / self.terms.timeline.duration_seconds
         };
         let remaining_amount = vested_amount - self.state.amount_already_issued;
         Ok(remaining_amount)
